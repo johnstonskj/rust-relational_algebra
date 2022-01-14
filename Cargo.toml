@@ -1,0 +1,12 @@
+[package]
+name = "relational-algebra"
+description = "Placeholder for Relational Algebra model and tools."
+version = "0.1.0"
+edition = "2021"
+repository = "https://github.com/johnstonskj/rust-relational_algebra"
+license-file = "LICENSE"
+readme = "README.md"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
