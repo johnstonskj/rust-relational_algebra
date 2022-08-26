@@ -4,8 +4,7 @@ TBD
 
 use std::collections::HashMap;
 
-use crate::ast::Criteria;
-use crate::Identifier;
+use crate::{ast::Term, Identifier};
 
 // ------------------------------------------------------------------------------------------------
 // Public Types & Constants
@@ -49,7 +48,7 @@ pub trait CartesianProduct<Rhs = Self> {
 pub trait Select {
     type Output;
 
-    fn select(self, criteria: &[Criteria]) -> Self::Output;
+    fn select(self, criteria: Term) -> Self::Output;
 }
 
 #[doc(alias = "Π")]
@@ -70,7 +69,7 @@ pub trait NaturalJoin<Rhs = Self> {
 pub trait ThetaJoin<Rhs = Self> {
     type Output;
 
-    fn theta_join(self, criteria: &[Criteria], rhs: Rhs) -> Self::Output;
+    fn theta_join(self, criteria: Term, rhs: Rhs) -> Self::Output;
 }
 
 #[doc(alias = "ρ")]

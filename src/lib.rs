@@ -131,5 +131,5 @@ pub mod sort;
 #[cfg(feature = "simple-data")]
 pub mod simple;
 
-#[cfg(feature = "graphviz")]
+//#[cfg(feature = "graphviz")]
 pub mod graph;

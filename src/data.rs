@@ -21,6 +21,7 @@ use std::fmt::{Debug, Display};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum DataType {
+    Boolean,
     Byte,
     UnsignedInteger,
     Integer,
@@ -31,6 +32,7 @@ pub enum DataType {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum Value {
+    Boolean(bool),
     Byte(u8),
     UnsignedInteger(u64),
     Integer(i64),
@@ -67,6 +69,7 @@ impl Display for DataType {
             f,
             "{}",
             match self {
+                Self::Boolean => "boolean",
                 Self::Byte => "byte",
                 Self::UnsignedInteger => "unsigned",
                 Self::Integer => "integer",
@@ -86,6 +89,7 @@ impl Display for Value {
             f,
             "{}",
             match self {
+                Self::Boolean(v) => format!("{}", v),
                 Self::Byte(v) => format!("0x{:02x}", v),
                 Self::UnsignedInteger(v) => format!("{}", v),
                 Self::Integer(v) => format!("{}", v),
@@ -94,6 +98,12 @@ impl Display for Value {
                 Self::String(v) => format!("{:?}", v),
             }
         )
+    }
+}
+
+impl From<bool> for Value {
+    fn from(v: bool) -> Self {
+        Self::Boolean(v)
     }
 }
 
@@ -143,6 +153,7 @@ impl Value {
     #[inline]
     pub fn data_type(&self) -> DataType {
         match self {
+            Self::Boolean(_) => DataType::Boolean,
             Self::Byte(_) => DataType::Byte,
             Self::UnsignedInteger(_) => DataType::UnsignedInteger,
             Self::Integer(_) => DataType::Integer,

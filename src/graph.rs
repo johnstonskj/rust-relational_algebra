@@ -2,239 +2,234 @@
 TBD
  */
 
-use super::{Row, View};
-use crate::edb::{Attribute, Constant, Schema};
-use crate::error::Result;
-use crate::idb::{Atom, Comparison, ComparisonOperator, Rule, Term, Variable};
-use crate::ProgramCore;
-use crate::{Collection, Labeled, MaybeAnonymous, MaybePositive, PredicateRef};
-use std::collections::HashMap;
+use crate::{
+    ast::{
+        Assignment, Join, ProjectedAttribute, Projection, RelationalOp, Rename, Selection,
+        SetOperation, Term,
+    },
+    error::Result,
+    Identifier,
+};
+use simple_dot::{
+    attributes::{GraphAttributes, LabelString, NodeAttributes, NodeStyles, Styled},
+    graph::Graph,
+    Edge, Identified, Identifier as DotId, Node, RootGraph,
+};
+use std::str::FromStr;
 
 // ------------------------------------------------------------------------------------------------
 // Public Functions
 // ------------------------------------------------------------------------------------------------
 
-// TODO: (ISSUES/rust-asdi/13) Change current form from cluster-by-rule to cluster-by-strata
-pub fn program_to_graphviz(program: &impl ProgramCore) -> String {
-    format!(
-        "digraph G {{\n{}\n}}\n",
-        program
-            .rules()
-            .iter()
-            .enumerate()
-            .map(|(index, rule)| {
-                let expr = RelationalOp::compile_rule(rule).unwrap();
-                expr.to_graphviz_graph((index + 1) as u32, Some(rule.to_string()))
-            })
-            .collect::<Vec<String>>()
-            .join("\n")
-    )
+pub fn relational_to_graphviz(op: &RelationalOp) -> Result<RootGraph> {
+    let progress = relational_to_node(op)?;
+
+    Ok(RootGraph::anonymous(false, true)
+        .set_attributes(GraphAttributes::default().root(progress.target.to_string()))
+        .add_nodes(progress.nodes)
+        .add_edges(progress.edges))
 }
 
-pub fn relational_to_graphviz(v: &RelationalOp) -> Result<String> {
-    Ok(self.to_graphviz_graph(1, None))
+// ------------------------------------------------------------------------------------------------
+// Private Types
+// ------------------------------------------------------------------------------------------------
+
+struct Progress {
+    target: simple_dot::Identifier,
+    nodes: Vec<Node>,
+    edges: Vec<Edge>,
 }
 
 // ------------------------------------------------------------------------------------------------
 // Private Functions
 // ------------------------------------------------------------------------------------------------
 
-fn to_graphviz_graph(v: &RelationalOp, graph_index: u32, label: Option<String>) -> String {
-    let (_, nodes, edges) = self.graphviz_one(1 + (graph_index * 100));
-    format!(
-        "{}{}\n{}\n}}",
-        if graph_index == 0 {
-            "digraph G {{\n".to_string()
-        } else {
-            format!(
-                "subgraph cluster_{} {{\n  color=gray;\n  label=\"{}\";\n\n",
-                graph_index,
-                match label {
-                    None => format!("Rule {}", graph_index),
-                    Some(label) => label,
-                }
-            )
-        },
-        nodes
-            .into_iter()
-            .map(|(_, (_, string))| string)
-            .collect::<Vec<String>>()
-            .join("\n"),
-        edges
-            .into_iter()
-            .map(|(lhs, rhs)| format!("  node{} -> node{};", lhs, rhs))
-            .collect::<Vec<String>>()
-            .join("\n"),
-    )
+fn relational_to_node(op: &RelationalOp) -> Result<Progress> {
+    Ok(match op {
+        RelationalOp::Relation(v) => relation_to_node(v)?,
+        RelationalOp::SetOperation(v) => set_operation_to_node(v)?,
+        RelationalOp::Selection(v) => selection_to_node(v)?,
+        RelationalOp::Projection(v) => projection_to_node(v)?,
+        RelationalOp::Rename(v) => rename_to_node(v)?,
+        RelationalOp::Join(v) => join_to_node(v)?,
+        RelationalOp::Assignment(v) => assignment_to_node(v)?,
+    })
 }
 
-#[allow(clippy::type_complexity)]
-fn graphviz_one(
-    v: &RelationalOp,
-    index: u32,
-) -> (u32, HashMap<&Self, (u32, String)>, Vec<(u32, u32)>) {
-    let mut node_map: HashMap<&Self, (u32, String)> = Default::default();
-    let mut edge_vec: Vec<(u32, u32)> = Default::default();
+fn relation_to_node(relation: &Identifier) -> Result<Progress> {
+    let node = Node::new(DotId::new_node()).set_attributes(
+        NodeAttributes::default()
+            .style(vec![NodeStyles::Filled])
+            .label(LabelString::from_str(&relation.to_string()).unwrap()),
+    );
+    Ok(Progress {
+        target: node.id().clone(),
+        nodes: vec![node],
+        edges: Default::default(),
+    })
+}
 
-    let next_index = match self {
-        RelationalOp::Relation(op) => {
-            if !node_map.contains_key(self) {
-                node_map.insert(
-                    self,
-                    (
-                        index,
-                        if op.is_extensional.unwrap_or(false) {
-                            format!(" node{}  [style=filled; label=\"{}\"];\n", index, op.source)
-                        } else {
-                            format!("  node{} [label=\"{}\"];", index, op.source)
-                        },
-                    ),
-                );
-            }
-            index + 1
-        }
-        RelationalOp::Selection(op) => {
-            let (next_index, nodes, edges) = op.source.graphviz_one(index + 1);
-            node_map.extend(nodes.into_iter());
-            edge_vec.extend(edges.into_iter());
-            if let Some((source_index, _)) = node_map.get(op.source.as_ref()) {
-                edge_vec.push((index, *source_index));
-            } else {
-                unreachable!()
-            }
+fn set_operation_to_node(set_operation: &SetOperation) -> Result<Progress> {
+    let lhs = relational_to_node(set_operation.lhs())?;
+    let rhs = relational_to_node(set_operation.rhs())?;
 
-            node_map.insert(
-                self,
-                (
-                    index,
-                    format!(
-                        "  node{} [label=\"σ\\n[{}]\"];",
-                        index,
-                        op.criteria
-                            .iter()
-                            .map(|c| c.to_string())
-                            .collect::<Vec<String>>()
-                            .join(", "),
-                    ),
-                ),
-            );
-            next_index + 1
-        }
-        RelationalOp::Projection(op) => {
-            let (next_index, nodes, edges) = op.source.graphviz_one(index + 1);
-            node_map.extend(nodes.into_iter());
-            edge_vec.extend(edges.into_iter());
-            if let Some((source_index, _)) = node_map.get(op.source.as_ref()) {
-                edge_vec.push((index, *source_index));
-            } else {
-                unreachable!()
-            }
+    let node_id = DotId::new_node();
+    let mut nodes = vec![Node::new(node_id.clone()).set_attributes(
+        NodeAttributes::default()
+            .label(LabelString::from_str(&format!("{}", set_operation.operator())).unwrap()),
+    )];
+    nodes.extend(lhs.nodes);
+    nodes.extend(rhs.nodes);
 
-            node_map.insert(
-                self,
-                (
-                    index,
-                    format!(
-                        "  node{} [label=\"Π\\n[{}]\"];",
-                        index,
-                        op.attributes
-                            .iter()
-                            .map(|v| if let Some(label) = v.label() {
-                                label.to_string()
-                            } else if let Some(index) = v.index() {
-                                index.to_string()
-                            } else {
-                                unreachable!()
-                            })
-                            .collect::<Vec<String>>()
-                            .join(", "),
-                    ),
-                ),
-            );
-            next_index + 1
-        }
-        RelationalOp::Join(op) => {
-            let (first_next_index, nodes, edges) = op.lhs.graphviz_one(index + 1);
-            node_map.extend(nodes.into_iter());
-            edge_vec.extend(edges.into_iter());
-            if let Some((source_index, _)) = node_map.get(op.lhs.as_ref()) {
-                edge_vec.push((index, *source_index));
-            } else {
-                unreachable!()
-            }
+    let mut edges = vec![
+        Edge::new(node_id.clone(), lhs.target),
+        Edge::new(node_id.clone(), rhs.target),
+    ];
+    edges.extend(lhs.edges);
+    edges.extend(rhs.edges);
 
-            let (next_index, nodes, edges) = op.rhs.graphviz_one(first_next_index + 1);
-            node_map.extend(nodes.into_iter());
-            edge_vec.extend(edges.into_iter());
-            if let Some((source_index, _)) = node_map.get(op.rhs.as_ref()) {
-                edge_vec.push((index, *source_index));
-            } else {
-                unreachable!()
-            }
+    Ok(Progress {
+        target: node_id,
+        nodes,
+        edges,
+    })
+}
 
-            if op.is_natural() {
-                node_map.insert(self, (index, format!("  node{} [label=\"⨝\"];", index,)));
-            } else {
-                node_map.insert(
-                    self,
-                    (
-                        index,
-                        format!(
-                            "  node{} [label=\"⨝𝞱\\n[{}]\"];",
-                            index,
-                            op.criteria
-                                .iter()
-                                .map(|c| c.to_string())
-                                .collect::<Vec<String>>()
-                                .join(", "),
-                        ),
-                    ),
-                );
-            }
-            next_index + 1
-        }
-        RelationalOp::SetOperation(op) => {
-            let (first_next_index, nodes, edges) = op.lhs.graphviz_one(index + 1);
-            node_map.extend(nodes.into_iter());
-            edge_vec.extend(edges.into_iter());
-            if let Some((source_index, _)) = node_map.get(op.lhs.as_ref()) {
-                edge_vec.push((index, *source_index));
-            } else {
-                unreachable!()
-            }
+fn selection_to_node(selection: &Selection) -> Result<Progress> {
+    let rhs = relational_to_node(selection.rhs())?;
 
-            let (next_index, nodes, edges) = op.rhs.graphviz_one(first_next_index + 1);
-            node_map.extend(nodes.into_iter());
-            edge_vec.extend(edges.into_iter());
-            if let Some((source_index, _)) = node_map.get(op.rhs.as_ref()) {
-                edge_vec.push((index, *source_index));
-            } else {
-                unreachable!()
-            }
+    let node_id = DotId::new_node();
+    let mut nodes = vec![Node::new(node_id.clone()).set_attributes(
+        NodeAttributes::default()
+            .label(LabelString::from_str(&format!("σ\n{}", selection.criteria())).unwrap()),
+    )];
+    nodes.extend(rhs.nodes);
 
-            node_map.insert(
-                self,
-                (index, format!("  node{} [label=\"{}\"];", index, op.op)),
-            );
+    let mut edges = vec![Edge::new(node_id.clone(), rhs.target)];
+    edges.extend(rhs.edges);
 
-            next_index + 1
-        }
-        RelationalOp::Sink(op) => {
-            let (next_index, nodes, edges) = op.source.graphviz_one(index + 1);
-            node_map.extend(nodes.into_iter());
-            edge_vec.extend(edges.into_iter());
-            if let Some((source_index, _)) = node_map.get(op.source.as_ref()) {
-                edge_vec.push((index, *source_index));
-            } else {
-                unreachable!()
-            }
+    Ok(Progress {
+        target: node_id,
+        nodes,
+        edges,
+    })
+}
 
-            node_map.insert(
-                self,
-                (index, format!("  node{} [label=\"{}\"];", index, op.sink)),
-            );
-            next_index + 1
-        }
+fn projection_to_node(projection: &Projection) -> Result<Progress> {
+    let rhs = relational_to_node(projection.rhs())?;
+
+    let node_id = DotId::new_node();
+    let mut nodes = vec![Node::new(node_id.clone()).set_attributes(
+        NodeAttributes::default().label(
+            LabelString::from_str(&format!(
+                "Π\n{}",
+                projection
+                    .attributes()
+                    .map(ProjectedAttribute::to_string)
+                    .collect::<Vec<String>>()
+                    .join(", ")
+            ))
+            .unwrap(),
+        ),
+    )];
+    nodes.extend(rhs.nodes);
+
+    let mut edges = vec![Edge::new(node_id.clone(), rhs.target)];
+    edges.extend(rhs.edges);
+
+    Ok(Progress {
+        target: node_id,
+        nodes,
+        edges,
+    })
+}
+
+fn rename_to_node(rename: &Rename) -> Result<Progress> {
+    let rhs = relational_to_node(rename.rhs())?;
+
+    let node_id = DotId::new_node();
+    let mut nodes = vec![Node::new(node_id.clone()).set_attributes(
+        NodeAttributes::default().label(
+            LabelString::from_str(&format!(
+                "ρ\n{}",
+                rename
+                    .renames()
+                    .map(|(a, i)| format!("{}/{}", a, i))
+                    .collect::<Vec<String>>()
+                    .join(", ")
+            ))
+            .unwrap(),
+        ),
+    )];
+    nodes.extend(rhs.nodes);
+
+    let mut edges = vec![Edge::new(node_id.clone(), rhs.target)];
+    edges.extend(rhs.edges);
+
+    Ok(Progress {
+        target: node_id,
+        nodes,
+        edges,
+    })
+}
+
+fn join_to_node(join: &Join) -> Result<Progress> {
+    let (lhs, criteria, rhs) = match join {
+        Join::Natural(j) => (j.lhs(), None, j.rhs()),
+        Join::Theta(j) => (j.lhs(), Some(j.criteria()), j.rhs()),
     };
-    (next_index, node_map, edge_vec)
+
+    let lhs = relational_to_node(lhs)?;
+    let rhs = relational_to_node(rhs)?;
+
+    let label_string = if let Some(criteria) = criteria {
+        LabelString::from_str(&format!("⨝\n{}", criteria)).unwrap()
+    } else {
+        LabelString::from_str("⨝").unwrap()
+    };
+
+    let node_id = DotId::new_node();
+    let mut nodes =
+        vec![Node::new(node_id.clone())
+            .set_attributes(NodeAttributes::default().label(label_string))];
+    nodes.extend(lhs.nodes);
+    nodes.extend(rhs.nodes);
+
+    let mut edges = vec![
+        Edge::new(node_id.clone(), lhs.target),
+        Edge::new(node_id.clone(), rhs.target),
+    ];
+    edges.extend(lhs.edges);
+    edges.extend(rhs.edges);
+
+    Ok(Progress {
+        target: node_id,
+        nodes,
+        edges,
+    })
+}
+
+fn assignment_to_node(assignment: &Assignment) -> Result<Progress> {
+    let rhs = relational_to_node(assignment.rhs())?;
+
+    let node_id = DotId::new_node();
+    let mut nodes = vec![Node::new(node_id.clone()).set_attributes(
+        NodeAttributes::default()
+            .style(vec![NodeStyles::Filled])
+            .label(LabelString::from_str(&format!("α\n{}", assignment.name())).unwrap()),
+    )];
+    nodes.extend(rhs.nodes);
+
+    let mut edges = vec![Edge::new(node_id.clone(), rhs.target)];
+    edges.extend(rhs.edges);
+
+    Ok(Progress {
+        target: node_id,
+        nodes,
+        edges,
+    })
+}
+
+fn term_to_node(_term: &Term) -> Result<Progress> {
+    todo!()
 }

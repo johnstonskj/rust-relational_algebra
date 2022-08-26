@@ -16,6 +16,7 @@ graphviz = []
 combine = "4.6"
 lazy_static = "1.4"
 regex = "1.6"
+simple_dot = { version = "0.1.0", path = "../rust-simple-dot" }
 tracing = "0.1"
 
 # serde = { version = "1.0", features = ["derive"] }
