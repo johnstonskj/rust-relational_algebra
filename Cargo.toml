@@ -1,6 +1,6 @@
 [package]
 name = "relational-algebra"
-description = "Placeholder for Relational Algebra model and tools."
+description = "Relational Algebra model and tools."
 version = "0.1.0"
 authors = ["Simon Johnston <johnstonskj@gmail.com>"]
 edition = "2021"

@@ -7,8 +7,9 @@ More detailed description, with
 
  */
 
-use crate::data::{DataType, Value};
-use crate::Identifier;
+use crate::data::Value;
+use crate::sort::DataType;
+use crate::Name;
 
 // ------------------------------------------------------------------------------------------------
 // Public Macros
@@ -22,13 +23,13 @@ use crate::Identifier;
 #[derive(Debug)]
 pub enum Error {
     /// The named relation does not exist in the selected database
-    InvalidIdentifier { value: String },
+    InvalidName { value: String },
 
     /// The named relation does not exist in the selected database
-    RelationDoesNotExist { name: Identifier },
+    RelationDoesNotExist { name: Name },
 
     /// The named attribute was not a member of the relation or view schema.
-    AttributeDoesNotExist { name: Identifier },
+    AttributeDoesNotExist { name: Name },
 
     /// The attribute index is not valid for the relation or view schema.
     AttributeIndexInvalid { index: usize },
@@ -59,23 +60,23 @@ pub type Result<T> = std::result::Result<T, Error>;
 // ------------------------------------------------------------------------------------------------
 
 #[inline]
-pub fn invalid_identifier_value<S>(value: S) -> Error
+pub fn invalid_name_value<S>(value: S) -> Error
 where
     S: Into<String>,
 {
-    Error::InvalidIdentifier {
+    Error::InvalidName {
         value: value.into(),
     }
 }
 
 #[inline]
-pub fn relation_does_not_exist(name: Identifier) -> Error {
+pub fn relation_does_not_exist(name: Name) -> Error {
     Error::RelationDoesNotExist { name }
 }
 
 /// The attribute does not exist in the selected relation or view schema
 #[inline]
-pub fn attribute_does_not_exist(name: Identifier) -> Error {
+pub fn attribute_does_not_exist(name: Name) -> Error {
     Error::AttributeDoesNotExist { name }
 }
 

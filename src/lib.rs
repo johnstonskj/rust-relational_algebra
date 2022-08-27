@@ -53,48 +53,59 @@ compile rules and atoms into [relational operations](RelationalOp).
     dyn_drop,
 )]
 
-use error::invalid_identifier_value;
+use error::{invalid_name_value, Error};
 use lazy_static::lazy_static;
-use std::fmt::Display;
+use std::{fmt::Display, str::FromStr};
 
 // ------------------------------------------------------------------------------------------------
 // Public Types & Constants
 // ------------------------------------------------------------------------------------------------
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Identifier(String);
+pub struct Name(String);
 
 // ------------------------------------------------------------------------------------------------
 // Implementations
 // ------------------------------------------------------------------------------------------------
 
-impl Display for Identifier {
+impl Display for Name {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
     }
 }
 
-impl Into<String> for Identifier {
-    fn into(self) -> String {
-        self.0
-    }
-}
+impl FromStr for Name {
+    type Err = Error;
 
-impl Identifier {
-    pub fn new_sql_like(s: &str) -> Result<Self, error::Error> {
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         lazy_static! {
             static ref SQL_IDENTIFIER: regex::Regex =
                 regex::Regex::new(r"[\p{L}_][\p{L}\p{Nd}_]*").unwrap();
         }
 
-        if is_valid_identifier_value(s, false, 128, &SQL_IDENTIFIER) {
+        if !s.is_empty() && s.len() < 128 && SQL_IDENTIFIER.is_match(s) {
             Ok(Self(s.to_string()))
         } else {
-            Err(invalid_identifier_value(s.to_string()))
+            Err(invalid_name_value(s.to_string()))
         }
     }
+}
 
+impl AsRef<str> for Name {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+
+impl Into<String> for Name {
+    fn into(self) -> String {
+        self.0
+    }
+}
+
+impl Name {
     pub fn new_unchecked(s: &str) -> Self {
+        assert!(!s.is_empty());
         Self(s.to_string())
     }
 }
@@ -103,15 +114,6 @@ impl Identifier {
 // Private Functions
 // ------------------------------------------------------------------------------------------------
 
-fn is_valid_identifier_value(
-    s: &str,
-    allow_empty: bool,
-    max_length: usize,
-    regex: &regex::Regex,
-) -> bool {
-    s.is_empty() == allow_empty && s.len() < max_length && regex.is_match(s)
-}
-
 // ------------------------------------------------------------------------------------------------
 // Modules
 // ------------------------------------------------------------------------------------------------
@@ -119,8 +121,6 @@ fn is_valid_identifier_value(
 pub mod ast;
 
 pub mod data;
-
-// pub mod eval;
 
 pub mod error;
 
@@ -131,5 +131,5 @@ pub mod sort;
 #[cfg(feature = "simple-data")]
 pub mod simple;
 
-//#[cfg(feature = "graphviz")]
+#[cfg(feature = "graphviz")]
 pub mod graph;

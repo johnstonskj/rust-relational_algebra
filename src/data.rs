@@ -7,8 +7,7 @@ More detailed description, with
 
  */
 
-use crate::sort::Relation as RelationSchema;
-use crate::Identifier;
+use crate::sort::{DataType, SortRelation};
 use std::fmt::{Debug, Display};
 
 // ------------------------------------------------------------------------------------------------
@@ -19,17 +18,6 @@ use std::fmt::{Debug, Display};
 // Public Types
 // ------------------------------------------------------------------------------------------------
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum DataType {
-    Boolean,
-    Byte,
-    UnsignedInteger,
-    Integer,
-    Float,
-    Char,
-    String,
-}
-
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum Value {
     Boolean(bool),
@@ -39,16 +27,29 @@ pub enum Value {
     Float(f64),
     Char(char),
     String(String),
+    Binary(Vec<u8>),
 }
 
 pub trait Relation {
-    fn schema(&self) -> &dyn RelationSchema;
+    type Schema: SortRelation;
+    type Item: Tuple;
+
+    fn schema(&self) -> &Self::Schema;
+
+    fn tuples(&self) -> Box<dyn Iterator<Item = &Self::Item> + '_>;
+}
+
+#[allow(single_use_lifetimes)]
+pub trait Tuple {
+    fn len(&self) -> usize;
+
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 
     fn value(&self, index: usize) -> Option<&Value>;
 
-    fn value_by_name(&self, name: &Identifier) -> Option<&Value>;
-
-    fn values(&self) -> Vec<&Value>;
+    fn values(&self) -> Box<dyn Iterator<Item = &Value> + '_>;
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -61,26 +62,6 @@ pub trait Relation {
 
 // ------------------------------------------------------------------------------------------------
 // Implementations
-// ------------------------------------------------------------------------------------------------
-
-impl Display for DataType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Boolean => "boolean",
-                Self::Byte => "byte",
-                Self::UnsignedInteger => "unsigned",
-                Self::Integer => "integer",
-                Self::Float => "float",
-                Self::Char => "char",
-                Self::String => "string",
-            }
-        )
-    }
-}
-
 // ------------------------------------------------------------------------------------------------
 
 impl Display for Value {
@@ -96,6 +77,7 @@ impl Display for Value {
                 Self::Float(v) => format!("{}", v),
                 Self::Char(v) => format!("{:?}", v),
                 Self::String(v) => format!("{:?}", v),
+                Self::Binary(v) => format!("{:?}", v),
             }
         )
     }
@@ -149,6 +131,12 @@ impl From<&str> for Value {
     }
 }
 
+impl From<Vec<u8>> for Value {
+    fn from(v: Vec<u8>) -> Self {
+        Self::Binary(v)
+    }
+}
+
 impl Value {
     #[inline]
     pub fn data_type(&self) -> DataType {
@@ -160,6 +148,7 @@ impl Value {
             Self::Float(_) => DataType::Float,
             Self::Char(_) => DataType::Char,
             Self::String(_) => DataType::String,
+            Self::Binary(_) => DataType::Binary,
         }
     }
 }

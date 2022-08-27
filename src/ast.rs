@@ -1,13 +1,14 @@
 /*!
-
+Provides the in-memory model for the Relational Algebra.
 
 */
 
 use crate::data::Value;
 use crate::error::Error;
-use crate::Identifier;
+use crate::Name;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Display, Formatter};
+use std::str::FromStr;
 
 // ------------------------------------------------------------------------------------------------
 // Public Types & Constants
@@ -15,7 +16,7 @@ use std::fmt::{Debug, Display, Formatter};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum RelationalOp {
-    Relation(Identifier),
+    Relation(Name),
     SetOperation(SetOperation),
     Selection(Selection),
     Projection(Projection),
@@ -26,6 +27,7 @@ pub enum RelationalOp {
 
 // ------------------------------------------------------------------------------------------------
 
+/// Denotes a set operation between two other relational operation.
 #[derive(Clone, Debug, PartialEq)]
 pub struct SetOperation {
     lhs: Box<RelationalOp>,
@@ -35,9 +37,13 @@ pub struct SetOperation {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum SetOperator {
+    /// Results in the union, `∪`, of two sets.
     Union,
+    /// Results in the intersection, `∩`, of two sets.
     Intersection,
+    /// Results in the difference, `∖`, of two sets.
     Difference,
+    /// Results in the cartesian product, `×`, of two sets.
     CartesianProduct,
 }
 
@@ -52,7 +58,7 @@ pub struct Selection {
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Attribute {
     Index(usize),
-    Name(Identifier),
+    Name(Name),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -95,7 +101,7 @@ pub struct Projection {
 #[derive(Clone, Debug, PartialEq)]
 pub enum ProjectedAttribute {
     Index(usize),
-    Name(Identifier),
+    Name(Name),
     Constant(Value),
 }
 
@@ -103,7 +109,7 @@ pub enum ProjectedAttribute {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Rename {
-    renames: HashMap<Attribute, Identifier>,
+    renames: HashMap<Attribute, Name>,
     rhs: Box<RelationalOp>,
 }
 
@@ -132,7 +138,7 @@ pub struct ThetaJoin {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Assignment {
-    name: Identifier,
+    name: Name,
     rhs: Box<RelationalOp>,
 }
 
@@ -206,8 +212,8 @@ impl Format for RelationalOp {
 
 display_from_format!(RelationalOp);
 
-impl From<Identifier> for RelationalOp {
-    fn from(v: Identifier) -> Self {
+impl From<Name> for RelationalOp {
+    fn from(v: Name) -> Self {
         Self::Relation(v)
     }
 }
@@ -262,18 +268,18 @@ impl From<Assignment> for RelationalOp {
 
 impl RelationalOp {
     pub fn relation(s: &str) -> Result<Self, Error> {
-        Ok(Identifier::new_sql_like(s)?.into())
+        Ok(Name::from_str(s)?.into())
     }
 
     pub fn relation_unchecked(s: &str) -> Self {
-        Identifier::new_unchecked(s).into()
+        Name::new_unchecked(s).into()
     }
 
     pub fn is_relation(&self) -> bool {
         matches!(self, Self::Relation(_))
     }
 
-    pub fn as_relation(&self) -> Option<&Identifier> {
+    pub fn as_relation(&self) -> Option<&Name> {
         match self {
             Self::Relation(v) => Some(v),
             _ => None,
@@ -368,14 +374,14 @@ impl RelationalOp {
 
     // --------------------------------------------------------------------------------------------
 
-    pub fn rename<S>(renames: HashMap<Attribute, Identifier>, rhs: S) -> Result<Self, Error>
+    pub fn rename<S>(renames: HashMap<Attribute, Name>, rhs: S) -> Result<Self, Error>
     where
         S: Into<Self>,
     {
         Ok(Rename::new(renames, rhs)?.into())
     }
 
-    pub fn rename_by_index<S>(renames: Vec<Identifier>, rhs: S) -> Result<Self, Error>
+    pub fn rename_by_index<S>(renames: Vec<Name>, rhs: S) -> Result<Self, Error>
     where
         S: Into<Self>,
     {
@@ -433,7 +439,7 @@ impl RelationalOp {
 
     // --------------------------------------------------------------------------------------------
 
-    pub fn assign<S>(name: Identifier, rhs: S) -> Self
+    pub fn assign<S>(name: Name, rhs: S) -> Self
     where
         S: Into<Self>,
     {
@@ -454,7 +460,7 @@ impl RelationalOp {
 
 // ------------------------------------------------------------------------------------------------
 
-impl Format for Identifier {
+impl Format for Name {
     fn to_formatted_string(&self, fmt: DisplayFormat) -> String {
         match fmt {
             _ => self.to_string(),
@@ -648,8 +654,8 @@ impl From<usize> for Attribute {
     }
 }
 
-impl From<Identifier> for Attribute {
-    fn from(v: Identifier) -> Self {
+impl From<Name> for Attribute {
+    fn from(v: Name) -> Self {
         Self::Name(v)
     }
 }
@@ -670,7 +676,7 @@ impl Attribute {
         matches!(self, Self::Name(_))
     }
 
-    pub fn as_name(&self) -> Option<&Identifier> {
+    pub fn as_name(&self) -> Option<&Name> {
         match self {
             Self::Name(v) => Some(v),
             _ => None,
@@ -760,8 +766,8 @@ impl From<usize> for Term {
     }
 }
 
-impl From<Identifier> for Term {
-    fn from(v: Identifier) -> Self {
+impl From<Name> for Term {
+    fn from(v: Name) -> Self {
         Self::Exists(v.into())
     }
 }
@@ -1152,8 +1158,8 @@ impl From<usize> for ProjectedAttribute {
     }
 }
 
-impl From<Identifier> for ProjectedAttribute {
-    fn from(v: Identifier) -> Self {
+impl From<Name> for ProjectedAttribute {
+    fn from(v: Name) -> Self {
         Self::Name(v)
     }
 }
@@ -1180,7 +1186,7 @@ impl ProjectedAttribute {
         matches!(self, Self::Name(_))
     }
 
-    pub fn as_name(&self) -> Option<&Identifier> {
+    pub fn as_name(&self) -> Option<&Name> {
         match self {
             Self::Name(v) => Some(v),
             _ => None,
@@ -1228,13 +1234,13 @@ impl Format for Rename {
 display_from_format!(Rename);
 
 impl Rename {
-    pub fn new<S>(renames: HashMap<Attribute, Identifier>, rhs: S) -> Result<Self, Error>
+    pub fn new<S>(renames: HashMap<Attribute, Name>, rhs: S) -> Result<Self, Error>
     where
         S: Into<RelationalOp>,
     {
         assert!(!renames.is_empty());
         let initial_len = renames.len();
-        let unique_names: HashSet<&Identifier> = renames.values().collect();
+        let unique_names: HashSet<&Name> = renames.values().collect();
         if unique_names.len() == initial_len {
             Ok(Self {
                 renames,
@@ -1245,15 +1251,15 @@ impl Rename {
         }
     }
 
-    pub fn new_indexed<S>(renames: Vec<Identifier>, rhs: S) -> Result<Self, Error>
+    pub fn new_indexed<S>(renames: Vec<Name>, rhs: S) -> Result<Self, Error>
     where
         S: Into<RelationalOp>,
     {
         assert!(!renames.is_empty());
         let initial_len = renames.len();
-        let unique_names: HashSet<&Identifier> = renames.iter().collect();
+        let unique_names: HashSet<&Name> = renames.iter().collect();
         if unique_names.len() == initial_len {
-            let renames: HashMap<Attribute, Identifier> = renames
+            let renames: HashMap<Attribute, Name> = renames
                 .into_iter()
                 .enumerate()
                 .map(|(index, name)| (Attribute::Index(index), name))
@@ -1271,7 +1277,7 @@ impl Rename {
         self.renames.len()
     }
 
-    pub fn renames(&self) -> impl Iterator<Item = (&Attribute, &Identifier)> {
+    pub fn renames(&self) -> impl Iterator<Item = (&Attribute, &Name)> {
         self.renames.iter()
     }
 
@@ -1458,7 +1464,7 @@ impl Format for Assignment {
 display_from_format!(Assignment);
 
 impl Assignment {
-    pub fn new<S>(name: Identifier, rhs: S) -> Self
+    pub fn new<S>(name: Name, rhs: S) -> Self
     where
         S: Into<RelationalOp>,
     {
@@ -1468,7 +1474,7 @@ impl Assignment {
         }
     }
 
-    pub fn name(&self) -> &Identifier {
+    pub fn name(&self) -> &Name {
         &self.name
     }
 

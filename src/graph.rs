@@ -8,12 +8,12 @@ use crate::{
         SetOperation, Term,
     },
     error::Result,
-    Identifier,
+    Name,
 };
 use simple_dot::{
     attributes::{GraphAttributes, LabelString, NodeAttributes, NodeStyles, Styled},
     graph::Graph,
-    Edge, Identified, Identifier as DotId, Node, RootGraph,
+    Edge, Identified, Name as DotId, Node, RootGraph,
 };
 use std::str::FromStr;
 
@@ -35,7 +35,7 @@ pub fn relational_to_graphviz(op: &RelationalOp) -> Result<RootGraph> {
 // ------------------------------------------------------------------------------------------------
 
 struct Progress {
-    target: simple_dot::Identifier,
+    target: simple_dot::Name,
     nodes: Vec<Node>,
     edges: Vec<Edge>,
 }
@@ -56,7 +56,7 @@ fn relational_to_node(op: &RelationalOp) -> Result<Progress> {
     })
 }
 
-fn relation_to_node(relation: &Identifier) -> Result<Progress> {
+fn relation_to_node(relation: &Name) -> Result<Progress> {
     let node = Node::new(DotId::new_node()).set_attributes(
         NodeAttributes::default()
             .style(vec![NodeStyles::Filled])

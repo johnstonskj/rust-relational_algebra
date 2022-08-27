@@ -3,22 +3,22 @@ use std::collections::HashMap;
 use relational_algebra::{
     ast::{Attribute, RelationalOp, Term},
     data::Value,
-    Identifier,
+    Name,
 };
 
 #[test]
 fn test_term_atom() {
     assert_eq!(format!("{}", Term::equals(0, 1)), String::from("0=1"));
     assert_eq!(
-        format!("{}", Term::not_equals(Identifier::new_unchecked("a"), 1)),
+        format!("{}", Term::not_equals(Name::new_unchecked("a"), 1)),
         String::from("a≠1")
     );
     assert_eq!(
         format!(
             "{}",
             Term::less_than(
-                Identifier::new_unchecked("a"),
-                Identifier::new_unchecked("b")
+                Name::new_unchecked("a"),
+                Name::new_unchecked("b")
             )
         ),
         String::from("a<b")
@@ -36,10 +36,10 @@ fn test_term_atom() {
 #[test]
 fn test_term_nested_and() {
     let ast = Term::and(
-        Identifier::new_unchecked("a"),
+        Name::new_unchecked("a"),
         Term::and(
-            Identifier::new_unchecked("b"),
-            Identifier::new_unchecked("c"),
+            Name::new_unchecked("b"),
+            Name::new_unchecked("c"),
         ),
     );
     println!("{:#?}", ast);
@@ -55,23 +55,23 @@ fn test_relation_only() {
 #[test]
 fn test_set_operation_only() {
     let ast = RelationalOp::union(
-        Identifier::new_unchecked("left"),
-        Identifier::new_unchecked("right"),
+        Name::new_unchecked("left"),
+        Name::new_unchecked("right"),
     );
     assert_eq!(format!("{}", ast), String::from("left ∪ right"));
 }
 
 #[test]
 fn test_selection_only() {
-    let ast = RelationalOp::select(Term::equals(0, 1), Identifier::new_unchecked("relation"));
+    let ast = RelationalOp::select(Term::equals(0, 1), Name::new_unchecked("relation"));
     assert_eq!(format!("{}", ast), String::from("σ[0=1]relation"));
 }
 
 #[test]
 fn test_projection_only() {
     let ast = RelationalOp::project(
-        vec![2.into(), Identifier::new_unchecked("a").into(), 0.into()],
-        Identifier::new_unchecked("relation"),
+        vec![2.into(), Name::new_unchecked("a").into(), 0.into()],
+        Name::new_unchecked("relation"),
     );
     assert_eq!(format!("{}", ast), String::from("Π[2, a, 0]relation"));
 }
@@ -79,10 +79,10 @@ fn test_projection_only() {
 #[test]
 fn test_rename_only() {
     let ast = RelationalOp::rename(
-        [(0.into(), Identifier::new_unchecked("a"))]
+        [(0.into(), Name::new_unchecked("a"))]
             .into_iter()
-            .collect::<HashMap<Attribute, Identifier>>(),
-        Identifier::new_unchecked("relation"),
+            .collect::<HashMap<Attribute, Name>>(),
+        Name::new_unchecked("relation"),
     )
     .unwrap();
     assert_eq!(format!("{}", ast), String::from("ρ[a]relation"));
@@ -91,8 +91,8 @@ fn test_rename_only() {
 #[test]
 fn test_natural_join_only() {
     let ast = RelationalOp::natural_join(
-        Identifier::new_unchecked("left"),
-        Identifier::new_unchecked("right"),
+        Name::new_unchecked("left"),
+        Name::new_unchecked("right"),
     );
     assert_eq!(format!("{}", ast), String::from("left ⨝ right"));
 }
@@ -100,9 +100,9 @@ fn test_natural_join_only() {
 #[test]
 fn test_theta_join_only() {
     let ast = RelationalOp::theta_join(
-        Identifier::new_unchecked("left"),
+        Name::new_unchecked("left"),
         Term::equals(0, 1),
-        Identifier::new_unchecked("right"),
+        Name::new_unchecked("right"),
     );
     assert_eq!(format!("{}", ast), String::from("left ⨝[0=1] right"));
 }
@@ -110,8 +110,8 @@ fn test_theta_join_only() {
 #[test]
 fn test_assignment_only() {
     let ast = RelationalOp::assign(
-        Identifier::new_unchecked("new_name"),
-        Identifier::new_unchecked("old_relation"),
+        Name::new_unchecked("new_name"),
+        Name::new_unchecked("old_relation"),
     );
     assert_eq!(format!("{}", ast), String::from("α[new_name]old_relation"));
 }

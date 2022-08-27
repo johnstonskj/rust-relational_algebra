@@ -2,9 +2,8 @@
 TBD
  */
 
+use crate::{ast::Term, Name};
 use std::collections::HashMap;
-
-use crate::{ast::Term, Identifier};
 
 // ------------------------------------------------------------------------------------------------
 // Public Types & Constants
@@ -13,7 +12,7 @@ use crate::{ast::Term, Identifier};
 #[derive(Clone, Debug, PartialEq)]
 pub enum Attribute {
     Index(usize),
-    Name(Box<Identifier>),
+    Name(Box<Name>),
 }
 
 #[doc(alias = "∩")]
@@ -76,7 +75,7 @@ pub trait ThetaJoin<Rhs = Self> {
 pub trait Rename<Rhs = Self> {
     type Output;
 
-    fn rename(self, source: Attribute, target: Box<Identifier>) -> Self::Output;
+    fn rename(self, source: Attribute, target: Box<Name>) -> Self::Output;
 
-    fn rename_all(self, names: HashMap<Attribute, Box<Identifier>>) -> Self::Output;
+    fn rename_all(self, names: HashMap<Attribute, Box<Name>>) -> Self::Output;
 }
