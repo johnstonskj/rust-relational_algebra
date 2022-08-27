@@ -16,10 +16,7 @@ fn test_term_atom() {
     assert_eq!(
         format!(
             "{}",
-            Term::less_than(
-                Name::new_unchecked("a"),
-                Name::new_unchecked("b")
-            )
+            Term::less_than(Name::new_unchecked("a"), Name::new_unchecked("b"))
         ),
         String::from("a<b")
     );
@@ -37,10 +34,7 @@ fn test_term_atom() {
 fn test_term_nested_and() {
     let ast = Term::and(
         Name::new_unchecked("a"),
-        Term::and(
-            Name::new_unchecked("b"),
-            Name::new_unchecked("c"),
-        ),
+        Term::and(Name::new_unchecked("b"), Name::new_unchecked("c")),
     );
     println!("{:#?}", ast);
     assert_eq!(format!("{}", ast), String::from("?a ∧ ?b ∧ ?c"));
@@ -54,10 +48,7 @@ fn test_relation_only() {
 
 #[test]
 fn test_set_operation_only() {
-    let ast = RelationalOp::union(
-        Name::new_unchecked("left"),
-        Name::new_unchecked("right"),
-    );
+    let ast = RelationalOp::union(Name::new_unchecked("left"), Name::new_unchecked("right"));
     assert_eq!(format!("{}", ast), String::from("left ∪ right"));
 }
 
@@ -90,10 +81,7 @@ fn test_rename_only() {
 
 #[test]
 fn test_natural_join_only() {
-    let ast = RelationalOp::natural_join(
-        Name::new_unchecked("left"),
-        Name::new_unchecked("right"),
-    );
+    let ast = RelationalOp::natural_join(Name::new_unchecked("left"), Name::new_unchecked("right"));
     assert_eq!(format!("{}", ast), String::from("left ⨝ right"));
 }
 
