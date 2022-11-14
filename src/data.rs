@@ -1,13 +1,8 @@
 /*!
-One-line description.
-
-More detailed description, with
-
-# Example
-
+Provides the traits required to implement a Relation *instance* and Tuple *instance* for evaluation.
  */
 
-use crate::sort::{DataType, SortRelation};
+use crate::sort::{Domain, RelationSchema};
 use std::fmt::{Debug, Display};
 
 // ------------------------------------------------------------------------------------------------
@@ -30,8 +25,11 @@ pub enum Value {
     Binary(Vec<u8>),
 }
 
+///
+/// A [`Relation`] $r$ is a set of tuples, and conforms to a specific [`RelationSchema`].
+///
 pub trait Relation {
-    type Schema: SortRelation;
+    type Schema: RelationSchema;
     type Item: Tuple;
 
     fn schema(&self) -> &Self::Schema;
@@ -39,6 +37,9 @@ pub trait Relation {
     fn tuples(&self) -> Box<dyn Iterator<Item = &Self::Item> + '_>;
 }
 
+///
+/// A [`Tuple`], or *relation instance*, $t$ comprises attribute $a$ [`Value`]s, conforming to specific `AttributeSchema`s.
+///
 #[allow(single_use_lifetimes)]
 pub trait Tuple {
     fn len(&self) -> usize;
@@ -139,16 +140,16 @@ impl From<Vec<u8>> for Value {
 
 impl Value {
     #[inline]
-    pub fn data_type(&self) -> DataType {
+    pub fn data_type(&self) -> Domain {
         match self {
-            Self::Boolean(_) => DataType::Boolean,
-            Self::Byte(_) => DataType::Byte,
-            Self::UnsignedInteger(_) => DataType::UnsignedInteger,
-            Self::Integer(_) => DataType::Integer,
-            Self::Float(_) => DataType::Float,
-            Self::Char(_) => DataType::Char,
-            Self::String(_) => DataType::String,
-            Self::Binary(_) => DataType::Binary,
+            Self::Boolean(_) => Domain::Boolean,
+            Self::Byte(_) => Domain::Byte,
+            Self::UnsignedInteger(_) => Domain::UnsignedInteger,
+            Self::Integer(_) => Domain::Integer,
+            Self::Float(_) => Domain::Float,
+            Self::Char(_) => Domain::Char,
+            Self::String(_) => Domain::String,
+            Self::Binary(_) => Domain::Binary,
         }
     }
 }

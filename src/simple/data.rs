@@ -1,15 +1,13 @@
 /*!
-One-line description.
-
-More detailed description, with
+Provides a [`Relation`] and [`Tuple`] implementation for a simple in-memory data store.
 
 # Example
 
  */
 
 use crate::data::{Relation, Tuple, Value};
-use crate::simple::sort::SimpleSortRelation;
-use crate::sort::SortRelation;
+use crate::simple::sort::SimpleRelationSchema;
+use crate::sort::RelationSchema;
 use std::{collections::HashSet, fmt::Display};
 
 // ------------------------------------------------------------------------------------------------
@@ -22,7 +20,7 @@ use std::{collections::HashSet, fmt::Display};
 
 #[derive(Clone, Debug)]
 pub struct SimpleRelation {
-    schema: SimpleSortRelation,
+    schema: SimpleRelationSchema,
     tuples: HashSet<SimpleTuple>,
 }
 
@@ -58,7 +56,7 @@ impl Display for SimpleRelation {
 }
 
 impl Relation for SimpleRelation {
-    type Schema = SimpleSortRelation;
+    type Schema = SimpleRelationSchema;
     type Item = SimpleTuple;
 
     fn schema(&self) -> &Self::Schema {

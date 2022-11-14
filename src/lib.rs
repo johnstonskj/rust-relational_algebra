@@ -1,15 +1,37 @@
 /*!
-This module provides a simplified model of the Relational Algebra and includes the capability to
-compile rules and atoms into [relational operations](RelationalOp).
+This module provides a simplified model (AST) of the Relational Algebra with the traits
+required to implement an evaluation environment.
 
-![module UML](https://raw.githubusercontent.com/johnstonskj/rust-asdi/main/book/src/model/idb_query_relational.svg)
+The relational algebra is
 
-# Example
+## Definitions
 
-# Features
+* **Relational algebra**; the basic set of operations applicable within the relational model.
+* **Relational algebra expression**; a sequence of relational algebra operations; such an expression can be considered a *query*.
+* **Relation**; TDB
+* **Attribute**; TBD
+* **Attribute Schema**; TDB
+* **Relation Schema**; TDB
+* **Sort**; TBD
+* **Tuple**; TDB
+* **Domain**; TBD
 
-* `graphviz`
-* `json`
+## More Information
+
+For more information on the Relational Algebra, see the following:
+
+* [Relational Algebra](https://en.wikipedia.org/wiki/Relational_algebra) on Wikipedia.
+* [Relational Algebra](http://infolab.stanford.edu/~ullman/fcdb/aut07/slides/ra.pdf) courseware from Stanford.
+* [Relational Algebra and SQL](https://www.cs.cornell.edu/projects/btr/bioinformaticsschool/slides/gehrke.pdf) slides from Database Management Systems, Cornell.
+
+Alternatively, try the tool [RelaX - relational algebra calculator](https://dbis-uibk.github.io/relax/landing), from the Institute of Computer Science at the University of Innsbruck.
+
+# Package Organization
+
+## Optional Features
+
+* `graphviz` - include the ability to create a DOT graph from the AST.
+* `simple_data` - include the ability to read CSV and JSON files as relation tuples.
 
  */
 
@@ -97,9 +119,9 @@ impl AsRef<str> for Name {
     }
 }
 
-impl Into<String> for Name {
-    fn into(self) -> String {
-        self.0
+impl From<Name> for String {
+    fn from(v: Name) -> Self {
+        v.0
     }
 }
 
@@ -124,11 +146,12 @@ pub mod data;
 
 pub mod error;
 
-pub mod ops;
+#[cfg(feature = "evaluation")]
+pub mod eval;
 
 pub mod sort;
 
-#[cfg(feature = "simple-data")]
+#[cfg(feature = "simple_data")]
 pub mod simple;
 
 #[cfg(feature = "graphviz")]

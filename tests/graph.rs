@@ -5,12 +5,9 @@ mod tests {
 
     #[test]
     fn test_generate_dot() {
-        let expr = RelationalOp::assign(
-            Name::new_unchecked("who_and_where"),
-            RelationalOp::natural_join(
-                Name::new_unchecked("people"),
-                RelationalOp::union(Name::new_unchecked("visits"), Name::new_unchecked("places")),
-            ),
+        let expr = RelationalOp::natural_join(
+            Name::new_unchecked("people"),
+            RelationalOp::union(Name::new_unchecked("visits"), Name::new_unchecked("places")),
         );
 
         println!("{:#?}", expr);

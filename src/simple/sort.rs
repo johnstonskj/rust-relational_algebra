@@ -8,7 +8,7 @@ More detailed description, with
  */
 
 use crate::{
-    sort::{DataType, Sort, SortAttribute, SortRelation},
+    sort::{AttributeSchema, Domain, RelationSchema, Schema},
     Name,
 };
 use std::{collections::HashMap, fmt::Display};
@@ -22,31 +22,31 @@ use std::{collections::HashMap, fmt::Display};
 // ------------------------------------------------------------------------------------------------
 
 #[derive(Clone, Debug)]
-pub struct SimpleSort {
+pub struct SimpleSchema {
     name: Name,
-    relations: HashMap<Name, SimpleSortRelation>,
+    relations: HashMap<Name, SimpleRelationSchema>,
 }
 
 #[derive(Debug)]
 pub struct Relations<'a> {
-    iter: std::collections::hash_map::Values<'a, Name, SimpleSortRelation>,
+    iter: std::collections::hash_map::Values<'a, Name, SimpleRelationSchema>,
 }
 
 #[derive(Clone, Debug)]
-pub struct SimpleSortRelation {
+pub struct SimpleRelationSchema {
     name: Name,
-    attributes: Vec<SimpleSortAttribute>,
+    attributes: Vec<SimpleAttributeSchema>,
 }
 
 #[derive(Debug)]
 pub struct Attributes<'a> {
-    iter: std::slice::Iter<'a, SimpleSortAttribute>,
+    iter: std::slice::Iter<'a, SimpleAttributeSchema>,
 }
 
 #[derive(Clone, Debug)]
-pub struct SimpleSortAttribute {
+pub struct SimpleAttributeSchema {
     name: Name,
-    data_type: DataType,
+    data_type: Domain,
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -61,7 +61,7 @@ pub struct SimpleSortAttribute {
 // Implementations
 // ------------------------------------------------------------------------------------------------
 
-impl Display for SimpleSort {
+impl Display for SimpleSchema {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -75,8 +75,8 @@ impl Display for SimpleSort {
     }
 }
 
-impl Sort for SimpleSort {
-    type Item = SimpleSortRelation;
+impl Schema for SimpleSchema {
+    type Item = SimpleRelationSchema;
 
     fn new<I>(name: Name, relations: I) -> Result<Self, crate::error::Error>
     where
@@ -111,7 +111,7 @@ impl Sort for SimpleSort {
 // ------------------------------------------------------------------------------------------------
 
 impl<'a> Iterator for Relations<'a> {
-    type Item = &'a SimpleSortRelation;
+    type Item = &'a SimpleRelationSchema;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.iter.next()
@@ -120,22 +120,22 @@ impl<'a> Iterator for Relations<'a> {
 
 // ------------------------------------------------------------------------------------------------
 
-impl Display for SimpleSortRelation {
+impl Display for SimpleRelationSchema {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
             "{}({})",
             self.name(),
             self.attributes()
-                .map(SimpleSortAttribute::to_string)
+                .map(SimpleAttributeSchema::to_string)
                 .collect::<Vec<String>>()
                 .join(", ")
         )
     }
 }
 
-impl SortRelation for SimpleSortRelation {
-    type Item = SimpleSortAttribute;
+impl RelationSchema for SimpleRelationSchema {
+    type Item = SimpleAttributeSchema;
 
     fn new<I>(name: Name, attributes: I) -> Result<Self, crate::error::Error>
     where
@@ -170,7 +170,7 @@ impl SortRelation for SimpleSortRelation {
 // ------------------------------------------------------------------------------------------------
 
 impl<'a> Iterator for Attributes<'a> {
-    type Item = &'a SimpleSortAttribute;
+    type Item = &'a SimpleAttributeSchema;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.iter.next()
@@ -179,14 +179,14 @@ impl<'a> Iterator for Attributes<'a> {
 
 // ------------------------------------------------------------------------------------------------
 
-impl Display for SimpleSortAttribute {
+impl Display for SimpleAttributeSchema {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}: {}", self.name(), self.data_type())
+        write!(f, "{}: {}", self.name(), self.domain())
     }
 }
 
-impl SortAttribute for SimpleSortAttribute {
-    fn new(name: Name, data_type: DataType) -> Self
+impl AttributeSchema for SimpleAttributeSchema {
+    fn new(name: Name, data_type: Domain) -> Self
     where
         Self: Sized,
     {
@@ -197,8 +197,8 @@ impl SortAttribute for SimpleSortAttribute {
         &&self.name
     }
 
-    fn data_type(&self) -> &DataType {
-        &&self.data_type
+    fn domain(&self) -> &Domain {
+        &self.data_type
     }
 }
 

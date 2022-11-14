@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use relational_algebra::{
-    ast::{Attribute, RelationalOp, Term},
+    ast::{Attribute, Expression, ExpressionList, RelationalOp, Term},
     data::Value,
     Name,
 };
@@ -64,7 +64,7 @@ fn test_projection_only() {
         vec![2.into(), Name::new_unchecked("a").into(), 0.into()],
         Name::new_unchecked("relation"),
     );
-    assert_eq!(format!("{}", ast), String::from("Π[2, a, 0]relation"));
+    assert_eq!(format!("{}", ast), String::from("π[2, a, 0]relation"));
 }
 
 #[test]
@@ -96,10 +96,21 @@ fn test_theta_join_only() {
 }
 
 #[test]
-fn test_assignment_only() {
-    let ast = RelationalOp::assign(
-        Name::new_unchecked("new_name"),
-        Name::new_unchecked("old_relation"),
-    );
-    assert_eq!(format!("{}", ast), String::from("α[new_name]old_relation"));
+fn test_unnamed_expression() {
+    let ast: ExpressionList = Expression::new(RelationalOp::union(
+        Name::new_unchecked("left"),
+        Name::new_unchecked("right"),
+    ))
+    .into();
+    assert_eq!(format!("{}", ast), String::from("left ∪ right;\n"));
+}
+
+#[test]
+fn test_named_expression() {
+    let ast: ExpressionList = Expression::named(
+        Name::new_unchecked("A"),
+        RelationalOp::union(Name::new_unchecked("left"), Name::new_unchecked("right")),
+    )
+    .into();
+    assert_eq!(format!("{}", ast), String::from("A ≔ left ∪ right;\n"));
 }

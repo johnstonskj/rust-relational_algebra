@@ -1,9 +1,9 @@
 /*!
-One-line description.
+Provides types and traits for describing a *Sort*, more commonly known as a
+[`Schema`].
 
-More detailed description, with
-
-# Example
+The traits defined here are implemented by a data provider to provide Relation Schema
+in some supported store.
 
  */
 
@@ -18,8 +18,12 @@ use std::fmt::Display;
 // Public Types
 // ------------------------------------------------------------------------------------------------
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum DataType {
+///
+/// A domain is an individual data type. The set of supported domains is referred to
+/// as $D$, where $D = \\{D_1, \ldots, D_i\\}$.
+///
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Domain {
     Boolean,
     Byte,
     UnsignedInteger,
@@ -30,8 +34,11 @@ pub enum DataType {
     Binary,
 }
 
-pub trait Sort: Display {
-    type Item: SortRelation;
+///
+/// A [`Schema`] $S$ is a named set of [`RelationSchema`] $R$ descriptions; $S = \\{R_1, \ldots, R_i\\}$.
+///
+pub trait Schema {
+    type Item: RelationSchema;
 
     fn new<I>(name: Name, relations: I) -> Result<Self, Error>
     where
@@ -55,9 +62,12 @@ pub trait Sort: Display {
     fn relations(&self) -> Box<dyn Iterator<Item = &Self::Item> + '_>;
 }
 
+///
+/// A [`RelationSchema`] $R$ is a named tuple of [`AttributeSchema`] $A$ descriptions; $R = \\{A_1, \ldots, A_i\\}$.
+///
 #[allow(single_use_lifetimes)]
-pub trait SortRelation: Display {
-    type Item: SortAttribute;
+pub trait RelationSchema {
+    type Item: AttributeSchema;
 
     fn new<I>(name: Name, attributes: I) -> Result<Self, Error>
     where
@@ -87,14 +97,17 @@ pub trait SortRelation: Display {
     fn attributes(&self) -> Box<dyn Iterator<Item = &Self::Item> + '_>;
 }
 
-pub trait SortAttribute: Display {
-    fn new(name: Name, data_type: DataType) -> Self
+///
+/// An [`AttributeSchema`] describes one member of a relation tuple; it is a mapping from an attribute name $n$ to a domain; $A = (n \rightarrow d)$ where $d \in D$.
+///
+pub trait AttributeSchema {
+    fn new(name: Name, data_type: Domain) -> Self
     where
         Self: Sized;
 
     fn name(&self) -> &Name;
 
-    fn data_type(&self) -> &DataType;
+    fn domain(&self) -> &Domain;
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -109,7 +122,7 @@ pub trait SortAttribute: Display {
 // Implementations
 // ------------------------------------------------------------------------------------------------
 
-impl Display for DataType {
+impl Display for Domain {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,

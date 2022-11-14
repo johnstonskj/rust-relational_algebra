@@ -1,6 +1,6 @@
 /*!
-TBD
- */
+
+*/
 
 use crate::{ast::Term, Name};
 use std::collections::HashMap;
@@ -54,7 +54,21 @@ pub trait Select {
 pub trait Project {
     type Output;
 
-    fn project(self, indices: &[Attribute]) -> Self::Output;
+    fn project(self, attributes: &[Attribute]) -> Self::Output;
+}
+
+#[doc(alias = "τ")]
+pub trait Sort {
+    type Output;
+
+    fn sort(self, attributes: &[Attribute]) -> Self::Output;
+}
+
+#[doc(alias = "γ")]
+pub trait Group {
+    type Output;
+
+    fn group(self, attributes: &[Attribute]) -> Self::Output;
 }
 
 #[doc(alias = "⨝")]

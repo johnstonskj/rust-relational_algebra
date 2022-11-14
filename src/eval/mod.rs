@@ -1,13 +1,11 @@
 /*!
-One-line description.
-
-More detailed description, with
+Provides an implementation of a query analyzer and execution model for Expressions.
 
 # Example
 
  */
 
-// use ...
+use crate::{data::Value, ast::{ComparisonOperator, ProjectedAttribute, Criteria, Selection, Order, Group}};
 
 // ------------------------------------------------------------------------------------------------
 // Public Macros
@@ -21,6 +19,12 @@ More detailed description, with
 // Public Functions
 // ------------------------------------------------------------------------------------------------
 
+pub fn analyze_expression() -> Result<> {}
+
+pub fn evaluate_expression() -> Result<Box<dyn Relation>> {
+    todo!()
+}
+
 // ------------------------------------------------------------------------------------------------
 // Private Types
 // ------------------------------------------------------------------------------------------------
@@ -29,7 +33,6 @@ More detailed description, with
 // Implementations
 // ------------------------------------------------------------------------------------------------
 
-use crate::{data::Value, ast::{ComparisonOperator, ProjectedAttribute, Criteria, Selection}};
 
 impl RelationalOp {
     pub fn compile_atom(atom: &Atom, project_constants: bool) -> Result<Self> {

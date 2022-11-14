@@ -4,12 +4,16 @@ on:
     paths:
       - '**/Cargo.toml'
       - '**/Cargo.lock'
+
 jobs:
   security_audit:
+    name: Security audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
-      - uses: actions-rs/audit-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-
+    - name: Checkout repository
+      uses: actions/checkout@v1
+      
+    - name: Audit check
+      uses: actions-rs/audit-check@v1
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}

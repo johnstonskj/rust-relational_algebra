@@ -1,7 +1,5 @@
 /*!
-One-line description.
-
-More detailed description, with
+Provides implementations of the [`crate::data`] and [`crate::sort`] module traits for simple file stores.
 
 # Example
 

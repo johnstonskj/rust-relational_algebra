@@ -1,6 +1,30 @@
 /*!
 Provides the in-memory model for the Relational Algebra.
 
+# Expressions and Operators
+
+A relational operation generally comprises an operator and one or two (infix)
+operands. is one of:
+
+| =Operator                | =Symbol | =Infix | =Arguments   |
+| ------------------------ | ------- | ------ | ------------ |
+| set union                | `∪`     | Yes    | No           |
+| set intersection         | `∩`     | Yes    | No           |
+| set difference           | `∖`     | Yes    | No           |
+| set symmetric difference | `△`     | Yes    | No           |
+| set cartesian product    | `×`     | Yes    | No           |
+| Selection                | `σ`     | No     | Criteria     |
+| Projection               | `π`     | No     | *Attributes* |
+| Rename                   | `ρ`     | No     | Attributes   |
+| Order                    | `τ`     | No     | Attributes   |
+| Group                    | `γ`     | No     | Attributes   |
+| natural join             | `⨝`     | Yes    | No           |
+| theta join               | `⨝`     | Yes    | Criteria     |
+
+A projection may also include constant values as well as attributes, and while
+a projection with no attributes is valid it is represented in the AST as a
+separate operator `Relation` with just the relation name.
+
 */
 
 use crate::data::Value;
@@ -15,19 +39,33 @@ use std::str::FromStr;
 // ------------------------------------------------------------------------------------------------
 
 #[derive(Clone, Debug, PartialEq)]
+pub struct Expression {
+    name: Option<Name>,
+    expr: RelationalOp,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct ExpressionList(Vec<Expression>);
+
+// ------------------------------------------------------------------------------------------------
+
+#[derive(Clone, Debug, PartialEq)]
 pub enum RelationalOp {
     Relation(Name),
     SetOperation(SetOperation),
     Selection(Selection),
     Projection(Projection),
     Rename(Rename),
+    Order(Order),
+    Group(Group),
     Join(Join),
-    Assignment(Assignment),
 }
 
 // ------------------------------------------------------------------------------------------------
 
+///
 /// Denotes a set operation between two other relational operation.
+///
 #[derive(Clone, Debug, PartialEq)]
 pub struct SetOperation {
     lhs: Box<RelationalOp>,
@@ -35,7 +73,7 @@ pub struct SetOperation {
     rhs: Box<RelationalOp>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SetOperator {
     /// Results in the union, `∪`, of two sets.
     Union,
@@ -43,6 +81,8 @@ pub enum SetOperator {
     Intersection,
     /// Results in the difference, `∖`, of two sets.
     Difference,
+    /// Results in the symmetric difference, `△`, of two sets.
+    SymmetricDifference,
     /// Results in the cartesian product, `×`, of two sets.
     CartesianProduct,
 }
@@ -78,7 +118,7 @@ pub struct Atom {
     rhs: ProjectedAttribute,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ComparisonOperator {
     Equal,
     NotEqual,
@@ -116,6 +156,22 @@ pub struct Rename {
 // ------------------------------------------------------------------------------------------------
 
 #[derive(Clone, Debug, PartialEq)]
+pub struct Order {
+    attributes: Vec<Attribute>,
+    rhs: Box<RelationalOp>,
+}
+
+// ------------------------------------------------------------------------------------------------
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Group {
+    attributes: Vec<Attribute>,
+    rhs: Box<RelationalOp>,
+}
+
+// ------------------------------------------------------------------------------------------------
+
+#[derive(Clone, Debug, PartialEq)]
 pub enum Join {
     Natural(NaturalJoin),
     Theta(ThetaJoin),
@@ -131,14 +187,6 @@ pub struct NaturalJoin {
 pub struct ThetaJoin {
     lhs: Box<RelationalOp>,
     criteria: Term,
-    rhs: Box<RelationalOp>,
-}
-
-// ------------------------------------------------------------------------------------------------
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct Assignment {
-    name: Name,
     rhs: Box<RelationalOp>,
 }
 
@@ -194,6 +242,110 @@ macro_rules! display_from_format {
 
 // ------------------------------------------------------------------------------------------------
 // Implementations
+
+// ------------------------------------------------------------------------------------------------
+
+impl Format for Expression {
+    fn to_formatted_string(&self, fmt: DisplayFormat) -> String {
+        let expr = self.expr.to_formatted_string(fmt);
+        if let Some(name) = self.name() {
+            format!(
+                "{} {} {}",
+                name,
+                match fmt {
+                    DisplayFormat::ToStringUnicode => "\u{2254}",
+                    DisplayFormat::ToStringAscii => ":=",
+                    DisplayFormat::Latex => "\\coloneqq",
+                    DisplayFormat::Html => "&#x2254;",
+                },
+                expr
+            )
+        } else {
+            expr
+        }
+    }
+}
+
+display_from_format!(Expression);
+
+impl<T> From<T> for Expression
+where
+    T: Into<RelationalOp>,
+{
+    fn from(v: T) -> Self {
+        Self::new(v.into())
+    }
+}
+
+impl Expression {
+    pub fn new<S>(expr: S) -> Self
+    where
+        S: Into<RelationalOp>,
+    {
+        Self {
+            name: None,
+            expr: expr.into(),
+        }
+    }
+
+    pub fn named<S>(name: Name, expr: S) -> Self
+    where
+        S: Into<RelationalOp>,
+    {
+        Self {
+            name: Some(name),
+            expr: expr.into(),
+        }
+    }
+
+    pub fn name(&self) -> Option<&Name> {
+        self.name.as_ref()
+    }
+
+    pub fn expression(&self) -> &RelationalOp {
+        &self.expr
+    }
+}
+
+impl Display for ExpressionList {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let separator_string = if f.alternate() { "; " } else { ";\n" };
+        write!(
+            f,
+            "{}",
+            self.0
+                .iter()
+                .map(|e| format!("{}{}", e, separator_string))
+                .collect::<Vec<String>>()
+                .join("")
+        )
+    }
+}
+
+impl<T> From<T> for ExpressionList
+where
+    T: Into<Expression>,
+{
+    fn from(v: T) -> Self {
+        Self::from(vec![v])
+    }
+}
+
+impl<T> From<Vec<T>> for ExpressionList
+where
+    T: Into<Expression>,
+{
+    fn from(v: Vec<T>) -> Self {
+        Self(v.into_iter().map(|e| e.into()).collect())
+    }
+}
+
+impl AsRef<Vec<Expression>> for ExpressionList {
+    fn as_ref(&self) -> &Vec<Expression> {
+        &self.0
+    }
+}
+
 // ------------------------------------------------------------------------------------------------
 
 impl Format for RelationalOp {
@@ -204,8 +356,9 @@ impl Format for RelationalOp {
             Self::Selection(v) => v.to_formatted_string(fmt),
             Self::Projection(v) => v.to_formatted_string(fmt),
             Self::Rename(v) => v.to_formatted_string(fmt),
+            Self::Order(v) => v.to_formatted_string(fmt),
+            Self::Group(v) => v.to_formatted_string(fmt),
             Self::Join(v) => v.to_formatted_string(fmt),
-            Self::Assignment(v) => v.to_formatted_string(fmt),
         }
     }
 }
@@ -260,9 +413,15 @@ impl From<Rename> for RelationalOp {
     }
 }
 
-impl From<Assignment> for RelationalOp {
-    fn from(v: Assignment) -> Self {
-        Self::Assignment(v)
+impl From<Order> for RelationalOp {
+    fn from(v: Order) -> Self {
+        Self::Order(v)
+    }
+}
+
+impl From<Group> for RelationalOp {
+    fn from(v: Group) -> Self {
+        Self::Group(v)
     }
 }
 
@@ -338,7 +497,7 @@ impl RelationalOp {
         T: Into<Term>,
         S: Into<Self>,
     {
-        Self::Selection(Selection::new(criteria.into(), from.into()).into())
+        Self::Selection(Selection::new(criteria.into(), from.into()))
     }
 
     pub fn is_selection(&self) -> bool {
@@ -358,7 +517,7 @@ impl RelationalOp {
     where
         S: Into<Self>,
     {
-        Self::Projection(Projection::new(attributes, rhs.into()).into())
+        Self::Projection(Projection::new(attributes, rhs.into()))
     }
 
     pub fn is_projection(&self) -> bool {
@@ -401,6 +560,46 @@ impl RelationalOp {
 
     // --------------------------------------------------------------------------------------------
 
+    pub fn sort_by<S>(attributes: Vec<Attribute>, rhs: S) -> Self
+    where
+        S: Into<Self>,
+    {
+        Self::Order(Order::new(attributes, rhs.into()))
+    }
+
+    pub fn is_sort_by(&self) -> bool {
+        matches!(self, Self::Order(_))
+    }
+
+    pub fn as_sort_by(&self) -> Option<&Order> {
+        match self {
+            Self::Order(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    // --------------------------------------------------------------------------------------------
+
+    pub fn group_by<S>(attributes: Vec<Attribute>, rhs: S) -> Self
+    where
+        S: Into<Self>,
+    {
+        Self::Group(Group::new(attributes, rhs.into()))
+    }
+
+    pub fn is_group_by(&self) -> bool {
+        matches!(self, Self::Group(_))
+    }
+
+    pub fn as_group_by(&self) -> Option<&Group> {
+        match self {
+            Self::Group(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    // --------------------------------------------------------------------------------------------
+
     pub fn natural_join<S1, S2>(lhs: S1, rhs: S2) -> Self
     where
         S1: Into<Self>,
@@ -436,35 +635,13 @@ impl RelationalOp {
             _ => None,
         }
     }
-
-    // --------------------------------------------------------------------------------------------
-
-    pub fn assign<S>(name: Name, rhs: S) -> Self
-    where
-        S: Into<Self>,
-    {
-        Assignment::new(name, rhs.into()).into()
-    }
-
-    pub fn is_assignment(&self) -> bool {
-        matches!(self, Self::Assignment(_))
-    }
-
-    pub fn as_assignment(&self) -> Option<&Assignment> {
-        match self {
-            Self::Assignment(v) => Some(v),
-            _ => None,
-        }
-    }
 }
 
 // ------------------------------------------------------------------------------------------------
 
 impl Format for Name {
-    fn to_formatted_string(&self, fmt: DisplayFormat) -> String {
-        match fmt {
-            _ => self.to_string(),
-        }
+    fn to_formatted_string(&self, _: DisplayFormat) -> String {
+        self.to_string()
     }
 }
 
@@ -532,6 +709,18 @@ impl SetOperation {
         }
     }
 
+    pub fn symmetric_difference<S1, S2>(lhs: S1, rhs: S2) -> Self
+    where
+        S1: Into<RelationalOp>,
+        S2: Into<RelationalOp>,
+    {
+        Self {
+            lhs: Box::new(lhs.into()),
+            op: SetOperator::SymmetricDifference,
+            rhs: Box::new(rhs.into()),
+        }
+    }
+
     pub fn cartesian_product<S1, S2>(lhs: S1, rhs: S2) -> Self
     where
         S1: Into<RelationalOp>,
@@ -564,6 +753,10 @@ impl SetOperation {
         self.op == SetOperator::Difference
     }
 
+    pub fn is_symmetric_difference(&self) -> bool {
+        self.op == SetOperator::SymmetricDifference
+    }
+
     pub fn is_cartesian_product(&self) -> bool {
         self.op == SetOperator::CartesianProduct
     }
@@ -587,7 +780,11 @@ impl Format for SetOperator {
             (Self::Difference, DisplayFormat::ToStringUnicode) => "∖",
             (Self::Difference, DisplayFormat::ToStringAscii) => "difference",
             (Self::Difference, DisplayFormat::Latex) => "\\setminus",
-            (Self::Difference, DisplayFormat::Html) => "&setminus",
+            (Self::Difference, DisplayFormat::Html) => "&setminus;",
+            (Self::SymmetricDifference, DisplayFormat::ToStringUnicode) => "△",
+            (Self::SymmetricDifference, DisplayFormat::ToStringAscii) => "symdifference",
+            (Self::SymmetricDifference, DisplayFormat::Latex) => "\\triangle",
+            (Self::SymmetricDifference, DisplayFormat::Html) => "&xutri;",
             (Self::CartesianProduct, DisplayFormat::ToStringUnicode) => "",
             (Self::CartesianProduct, DisplayFormat::ToStringAscii) => "product",
             (Self::CartesianProduct, DisplayFormat::Latex) => "\\times",
@@ -636,6 +833,8 @@ impl Selection {
         &self.rhs
     }
 }
+
+// ------------------------------------------------------------------------------------------------
 
 impl Format for Attribute {
     fn to_formatted_string(&self, _fmt: DisplayFormat) -> String {
@@ -1104,10 +1303,10 @@ impl Format for Projection {
             .join(", ");
         let rhs = to_term_string(&self.rhs, fmt);
         match fmt {
-            DisplayFormat::ToStringUnicode => format!("Π[{}]{}", attributes, rhs),
+            DisplayFormat::ToStringUnicode => format!("π[{}]{}", attributes, rhs),
             DisplayFormat::ToStringAscii => format!("project[{}]{}", attributes, rhs),
-            DisplayFormat::Latex => format!("\\Pi_{{{}}}{}", attributes, rhs),
-            DisplayFormat::Html => format!("&Pi;<sub>{}</sub>{}", attributes, rhs),
+            DisplayFormat::Latex => format!("\\pi_{{{}}}{}", attributes, rhs),
+            DisplayFormat::Html => format!("&pi;<sub>{}</sub>{}", attributes, rhs),
         }
     }
 }
@@ -1122,7 +1321,7 @@ impl Projection {
         assert!(!attributes.is_empty());
 
         Self {
-            attributes: attributes.into(),
+            attributes,
             rhs: Box::new(from.into()),
         }
     }
@@ -1202,6 +1401,102 @@ impl ProjectedAttribute {
             Self::Constant(v) => Some(v),
             _ => None,
         }
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
+
+impl Format for Order {
+    fn to_formatted_string(&self, fmt: DisplayFormat) -> String {
+        let attributes = self
+            .attributes
+            .iter()
+            .map(|attribute| attribute.to_formatted_string(fmt))
+            .collect::<Vec<String>>()
+            .join(", ");
+        let rhs = to_term_string(&self.rhs, fmt);
+        match fmt {
+            DisplayFormat::ToStringUnicode => format!("τ[{}]{}", attributes, rhs),
+            DisplayFormat::ToStringAscii => format!("sort[{}]{}", attributes, rhs),
+            DisplayFormat::Latex => format!("\\tau_{{{}}}{}", attributes, rhs),
+            DisplayFormat::Html => format!("&tau;<sub>{}</sub>{}", attributes, rhs),
+        }
+    }
+}
+
+display_from_format!(Order);
+
+impl Order {
+    pub fn new<S>(attributes: Vec<Attribute>, from: S) -> Self
+    where
+        S: Into<RelationalOp>,
+    {
+        assert!(!attributes.is_empty());
+
+        Self {
+            attributes,
+            rhs: Box::new(from.into()),
+        }
+    }
+
+    pub fn count(&self) -> usize {
+        self.attributes.len()
+    }
+
+    pub fn attributes(&self) -> impl Iterator<Item = &Attribute> {
+        self.attributes.iter()
+    }
+
+    pub fn rhs(&self) -> &RelationalOp {
+        &self.rhs
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
+
+impl Format for Group {
+    fn to_formatted_string(&self, fmt: DisplayFormat) -> String {
+        let attributes = self
+            .attributes
+            .iter()
+            .map(|attribute| attribute.to_formatted_string(fmt))
+            .collect::<Vec<String>>()
+            .join(", ");
+        let rhs = to_term_string(&self.rhs, fmt);
+        match fmt {
+            DisplayFormat::ToStringUnicode => format!("γ[{}]{}", attributes, rhs),
+            DisplayFormat::ToStringAscii => format!("group[{}]{}", attributes, rhs),
+            DisplayFormat::Latex => format!("\\gamma_{{{}}}{}", attributes, rhs),
+            DisplayFormat::Html => format!("&gamma;<sub>{}</sub>{}", attributes, rhs),
+        }
+    }
+}
+
+display_from_format!(Group);
+
+impl Group {
+    pub fn new<S>(attributes: Vec<Attribute>, from: S) -> Self
+    where
+        S: Into<RelationalOp>,
+    {
+        assert!(!attributes.is_empty());
+
+        Self {
+            attributes,
+            rhs: Box::new(from.into()),
+        }
+    }
+
+    pub fn count(&self) -> usize {
+        self.attributes.len()
+    }
+
+    pub fn attributes(&self) -> impl Iterator<Item = &Attribute> {
+        self.attributes.iter()
+    }
+
+    pub fn rhs(&self) -> &RelationalOp {
+        &self.rhs
     }
 }
 
@@ -1440,42 +1735,6 @@ impl ThetaJoin {
 
     pub fn criteria(&self) -> &Term {
         &self.criteria
-    }
-
-    pub fn rhs(&self) -> &RelationalOp {
-        &self.rhs
-    }
-}
-
-// ------------------------------------------------------------------------------------------------
-
-impl Format for Assignment {
-    fn to_formatted_string(&self, fmt: DisplayFormat) -> String {
-        let rhs = to_term_string(&self.rhs, fmt);
-        match fmt {
-            DisplayFormat::ToStringUnicode => format!("α[{}]{}", self.name(), rhs),
-            DisplayFormat::ToStringAscii => format!("assign[{}]{}", self.name(), rhs),
-            DisplayFormat::Latex => format!("\\alpha_{{{}}}{}", self.name(), rhs),
-            DisplayFormat::Html => format!("&alpha;<sub>{}</sub>{}", self.name(), rhs),
-        }
-    }
-}
-
-display_from_format!(Assignment);
-
-impl Assignment {
-    pub fn new<S>(name: Name, rhs: S) -> Self
-    where
-        S: Into<RelationalOp>,
-    {
-        Self {
-            name,
-            rhs: Box::new(rhs.into()),
-        }
-    }
-
-    pub fn name(&self) -> &Name {
-        &self.name
     }
 
     pub fn rhs(&self) -> &RelationalOp {

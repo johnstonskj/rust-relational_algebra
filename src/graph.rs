@@ -1,11 +1,14 @@
 /*!
-TBD
+This module allows for the generation of a [GraphViz](https://graphviz.org/) DOT representation of an expression.
+
+[DOT](https://graphviz.org/doc/info/lang.html)
+
  */
 
 use crate::{
     ast::{
-        Assignment, Join, ProjectedAttribute, Projection, RelationalOp, Rename, Selection,
-        SetOperation, Term,
+        Attribute, Group, Join, Order, ProjectedAttribute, Projection, RelationalOp, Rename,
+        Selection, SetOperation,
     },
     error::Result,
     Name,
@@ -13,7 +16,7 @@ use crate::{
 use simple_dot::{
     attributes::{GraphAttributes, LabelString, NodeAttributes, NodeStyles, Styled},
     graph::Graph,
-    Edge, Identified, Name as DotId, Node, RootGraph,
+    Edge, Identified, Identifier as DotId, Node, RootGraph,
 };
 use std::str::FromStr;
 
@@ -35,7 +38,7 @@ pub fn relational_to_graphviz(op: &RelationalOp) -> Result<RootGraph> {
 // ------------------------------------------------------------------------------------------------
 
 struct Progress {
-    target: simple_dot::Name,
+    target: DotId,
     nodes: Vec<Node>,
     edges: Vec<Edge>,
 }
@@ -51,8 +54,9 @@ fn relational_to_node(op: &RelationalOp) -> Result<Progress> {
         RelationalOp::Selection(v) => selection_to_node(v)?,
         RelationalOp::Projection(v) => projection_to_node(v)?,
         RelationalOp::Rename(v) => rename_to_node(v)?,
+        RelationalOp::Order(v) => order_to_node(v)?,
+        RelationalOp::Group(v) => group_to_node(v)?,
         RelationalOp::Join(v) => join_to_node(v)?,
-        RelationalOp::Assignment(v) => assignment_to_node(v)?,
     })
 }
 
@@ -173,6 +177,64 @@ fn rename_to_node(rename: &Rename) -> Result<Progress> {
     })
 }
 
+fn order_to_node(order: &Order) -> Result<Progress> {
+    let rhs = relational_to_node(order.rhs())?;
+
+    let node_id = DotId::new_node();
+    let mut nodes = vec![Node::new(node_id.clone()).set_attributes(
+        NodeAttributes::default().label(
+            LabelString::from_str(&format!(
+                "τ\n{}",
+                order
+                    .attributes()
+                    .map(Attribute::to_string)
+                    .collect::<Vec<String>>()
+                    .join(", ")
+            ))
+            .unwrap(),
+        ),
+    )];
+    nodes.extend(rhs.nodes);
+
+    let mut edges = vec![Edge::new(node_id.clone(), rhs.target)];
+    edges.extend(rhs.edges);
+
+    Ok(Progress {
+        target: node_id,
+        nodes,
+        edges,
+    })
+}
+
+fn group_to_node(group: &Group) -> Result<Progress> {
+    let rhs = relational_to_node(group.rhs())?;
+
+    let node_id = DotId::new_node();
+    let mut nodes = vec![Node::new(node_id.clone()).set_attributes(
+        NodeAttributes::default().label(
+            LabelString::from_str(&format!(
+                "γ\n{}",
+                group
+                    .attributes()
+                    .map(Attribute::to_string)
+                    .collect::<Vec<String>>()
+                    .join(", ")
+            ))
+            .unwrap(),
+        ),
+    )];
+    nodes.extend(rhs.nodes);
+
+    let mut edges = vec![Edge::new(node_id.clone(), rhs.target)];
+    edges.extend(rhs.edges);
+
+    Ok(Progress {
+        target: node_id,
+        nodes,
+        edges,
+    })
+}
+
 fn join_to_node(join: &Join) -> Result<Progress> {
     let (lhs, criteria, rhs) = match join {
         Join::Natural(j) => (j.lhs(), None, j.rhs()),
@@ -209,27 +271,23 @@ fn join_to_node(join: &Join) -> Result<Progress> {
     })
 }
 
-fn assignment_to_node(assignment: &Assignment) -> Result<Progress> {
-    let rhs = relational_to_node(assignment.rhs())?;
-
-    let node_id = DotId::new_node();
-    let mut nodes = vec![Node::new(node_id.clone()).set_attributes(
-        NodeAttributes::default()
-            .style(vec![NodeStyles::Filled])
-            .label(LabelString::from_str(&format!("α\n{}", assignment.name())).unwrap()),
-    )];
-    nodes.extend(rhs.nodes);
-
-    let mut edges = vec![Edge::new(node_id.clone(), rhs.target)];
-    edges.extend(rhs.edges);
-
-    Ok(Progress {
-        target: node_id,
-        nodes,
-        edges,
-    })
-}
-
-fn term_to_node(_term: &Term) -> Result<Progress> {
-    todo!()
-}
+// fn assignment_to_node(assignment: &Assignment) -> Result<Progress> {
+//     let rhs = relational_to_node(assignment.rhs())?;
+//
+//     let node_id = DotId::new_node();
+//     let mut nodes = vec![Node::new(node_id.clone()).set_attributes(
+//         NodeAttributes::default()
+//             .style(vec![NodeStyles::Filled])
+//             .label(LabelString::from_str(&format!("α\n{}", assignment.name())).unwrap()),
+//     )];
+//     nodes.extend(rhs.nodes);
+//
+//     let mut edges = vec![Edge::new(node_id.clone(), rhs.target)];
+//     edges.extend(rhs.edges);
+//
+//     Ok(Progress {
+//         target: node_id,
+//         nodes,
+//         edges,
+//     })
+// }
