@@ -194,7 +194,7 @@ impl AttributeSchema for SimpleAttributeSchema {
     }
 
     fn name(&self) -> &Name {
-        &&self.name
+        &self.name
     }
 
     fn domain(&self) -> &Domain {

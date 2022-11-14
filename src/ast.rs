@@ -1750,11 +1750,9 @@ impl ThetaJoin {
 fn to_term_string(r: &RelationalOp, fmt: DisplayFormat) -> String {
     if r.is_relation() {
         r.to_string()
+    } else if fmt == DisplayFormat::Latex {
+        format!("\\({}\\)", r)
     } else {
-        if fmt == DisplayFormat::Latex {
-            format!("\\({}\\)", r)
-        } else {
-            format!("({})", r)
-        }
+        format!("({})", r)
     }
 }

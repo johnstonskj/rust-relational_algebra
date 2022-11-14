@@ -64,7 +64,7 @@ fn relation_to_node(relation: &Name) -> Result<Progress> {
     let node = Node::new(DotId::new_node()).set_attributes(
         NodeAttributes::default()
             .style(vec![NodeStyles::Filled])
-            .label(LabelString::from_str(&relation.to_string()).unwrap()),
+            .label(LabelString::from_str(relation.as_ref()).unwrap()),
     );
     Ok(Progress {
         target: node.id().clone(),
