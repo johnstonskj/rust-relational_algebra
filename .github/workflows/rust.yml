@@ -113,7 +113,9 @@ jobs:
         profile: minimal
         override: true
         components: rustfmt
-      
+              
+    - uses: Swatinem/rust-cache@v1
+
     - name: Check formatting
       run: cargo fmt --all -- --check
 
@@ -132,7 +134,9 @@ jobs:
         profile: minimal
         override: true
         components: clippy
-      
+              
+    - uses: Swatinem/rust-cache@v1
+
     - uses: actions-rs/clippy-check@v1
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
