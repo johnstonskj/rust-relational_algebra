@@ -19,5 +19,5 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: publish
-        args: --all-features
+        args: --all-features --token ${CARGO_REGISTRY_TOKEN}
 
