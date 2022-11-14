@@ -19,5 +19,5 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: publish
-        args: --all-features --token {{ "${{ secrets.CARGO_API_KEY " }}}}
+        args: --all-features --token {{ secrets.CARGO_API_KEY }}
 
