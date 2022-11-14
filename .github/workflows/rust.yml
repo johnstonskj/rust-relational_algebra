@@ -21,16 +21,29 @@ on:
   - cron: '12 12 12 * *'
 
 jobs:
-  pipeline:
-    name: Pipeline
-    needs: [test, docs, rustfmt, clippy, publish]
+  publish:
+    name: Publish (dry-run)
+    needs: [test, docs]
     runs-on: ubuntu-latest
     steps:
-      - name: Done
-        run: exit 0
+    - name: Checkout repository
+      uses: actions/checkout@v2
+      
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        profile: minimal
+        override: true
+        
+    - uses: Swatinem/rust-cache@v1
+      
+    - name: Check publish
+      run: cargo publish --dry-run --all-features
 
   test:
     name: Test
+    needs: [rustfmt, clippy]
     strategy:
       matrix:
         os: ["ubuntu-latest", "windows-latest", "macos-latest"]
@@ -65,6 +78,7 @@ jobs:
 
   docs:
     name: Document generation
+    needs: [rustfmt, clippy]
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
@@ -123,24 +137,3 @@ jobs:
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         args: --workspace --all-features --all-targets -- -D warnings --allow deprecated
-
-
-
-  publish:
-    name: Publish (dry-run)
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
-      
-    - name: Install Rust
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        profile: minimal
-        override: true
-        
-    - uses: Swatinem/rust-cache@v1
-      
-    - name: Check publish
-      run: cargo publish --dry-run --all-features
