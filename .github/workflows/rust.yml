@@ -76,7 +76,7 @@ jobs:
       
   benchmarks:
     name: Benchmarks
-    if: ${{ always() && hashFiles(benches/**) }}
+    if: hashFiles('benches/**')
     needs: [rustfmt, clippy]
     strategy:
       matrix:
