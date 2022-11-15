@@ -73,56 +73,12 @@ jobs:
     - name: Test with no default features
       run: cargo test --workspace --no-default-features
 
-      
-  benchmarks:
-    name: Benchmarks
-    if: hashFiles('benches/**')
-    needs: [rustfmt, clippy]
-    strategy:
-      matrix:
-        os: ["ubuntu-latest", "windows-latest", "macos-latest"]
-        rust: ["stable"]
-    runs-on: ${{ matrix.os }}
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
-      
-    - name: Install Rust
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: ${{ matrix.rust }}
-        profile: minimal
-        override: true
-        
-    - uses: Swatinem/rust-cache@v1
-      
     - name: Run benchmarks with all features
+      if: hashFiles('benches/**')
       run: cargo test --workspace --benches --all-features
-
-      
-  examples:
-    name: Examples
-    if: hashFiles('examples/**')
-    needs: [rustfmt, clippy]
-    strategy:
-      matrix:
-        os: ["ubuntu-latest", "windows-latest", "macos-latest"]
-        rust: ["stable"]
-    runs-on: ${{ matrix.os }}
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
-      
-    - name: Install Rust
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: ${{ matrix.rust }}
-        profile: minimal
-        override: true
-        
-    - uses: Swatinem/rust-cache@v1
-      
+     
     - name: Run examples with all features
+      if: hashFiles('examples/**')
       run: cargo test --workspace --examples --all-features
 
       
