@@ -37,7 +37,10 @@ jobs:
     - uses: Swatinem/rust-cache@v1
       
     - name: Check publish
-      run: cargo publish --dry-run --all-features
+      uses: actions-rs/cargo@v1
+      with:
+        command: publish
+        args: --dry-run --all-features
 
       
   check_tests:
@@ -56,7 +59,8 @@ jobs:
         id: check_examples
         run: test -d examples && echo "has_examples=1" || echo "has_examples=" >> $GITHUB_OUTPUT
         shell: bash
-      
+
+        
   test:
     name: Test
     needs: [rustfmt, clippy]
@@ -64,6 +68,7 @@ jobs:
       matrix:
         os: ["ubuntu-latest", "windows-latest", "macos-latest"]
         rust: ["stable", "beta"]
+        test-features: ["", "--all-features", "--no-default-features"]
     continue-on-error: ${{ matrix.rust != 'stable' }}
     runs-on: ${{ matrix.os }}
     steps:
@@ -80,26 +85,26 @@ jobs:
     - uses: Swatinem/rust-cache@v1
       
     - name: Build
-      run: cargo build --workspace --all-features
+      uses: actions-rs/cargo@v1
+      with:
+        command: build
+        args: --workspace ${{ matrix.test-features }}
       
-    - name: Test with default features
-      run: cargo test --workspace
-      
-    - name: Test with all features
-      run: cargo test --workspace --all-features
-      
-    - name: Test with no default features
-      run: cargo test --workspace --no-default-features
-   
-    - name: Run examples with all features
-      if: hashFiles('examples/**')
-      run: cargo test --workspace --examples --all-features
-
+    - name: Test
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --workspace ${{ matrix.test-features }}
+ 
       
   benchmarks:
     name: Benchmark
     needs: [rustfmt, clippy, check_tests]
     if: needs.check_tests.outputs.has_benchmarks
+    strategy:
+      matrix:
+        os: ["ubuntu-latest", "windows-latest", "macos-latest"]
+        rust: ["stable"]
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
@@ -115,7 +120,10 @@ jobs:
     - uses: Swatinem/rust-cache@v1
       
     - name: Run benchmarks with all features
-      run: cargo test --workspace --benches --all-features
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --workspace --benches --all-features
 
       
   examples:
@@ -123,6 +131,10 @@ jobs:
     needs: [rustfmt, clippy, check_tests]
     if: needs.check_tests.outputs.has_examples
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: ["ubuntu-latest", "windows-latest", "macos-latest"]
+        rust: ["stable"]
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
@@ -137,7 +149,10 @@ jobs:
     - uses: Swatinem/rust-cache@v1
       
     - name: Run examples with all features
-      run: cargo test --workspace --examples --all-features
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --workspace --examples --all-features
 
       
   docs:
@@ -158,9 +173,10 @@ jobs:
     - uses: Swatinem/rust-cache@v1
       
     - name: Check documentation
-      env:
-        RUSTDOCFLAGS: -D warnings
-      run: cargo doc --workspace --all-features --no-deps
+      uses: actions-rs/cargo@v1
+      with:
+        command: doc
+        args: --workspace --all-features --no-deps
 
       
   rustfmt:
@@ -181,7 +197,10 @@ jobs:
     - uses: Swatinem/rust-cache@v1
 
     - name: Check formatting
-      run: cargo fmt --all -- --check
+      uses: actions-rs/cargo@v1
+      with:
+        command: fmt
+        args: --all -- --check
 
       
   clippy:
