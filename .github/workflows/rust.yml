@@ -43,15 +43,19 @@ jobs:
   check_tests:
     name: Check for test types
     runs-on: ubuntu-latest
+    outputs:
+      has_benchmarks: ${{ steps.check_benchmarks.outputs.has_benchmarks }}
+      has_examples: ${{ steps.check_examples.outputs.has_examples }}
     steps:
-      - name Check for benchmarks
-      - run: test -d benchmarks && echo "has_benchmarks=1" || echo "has_benchmarks=" >> $GITHUB_OUTPUT
-      - shell: bash
+      - name: Check for benchmarks
+        id: check_benchmarks
+        run: test -d benchmarks && echo "has_benchmarks=1" || echo "has_benchmarks=" >> $GITHUB_OUTPUT
+        shell: bash
         
-    steps:
-      - name Check for examples
-      - run: test -d examples && echo "has_examples=1" || echo "has_examples=" >> $GITHUB_OUTPUT
-      - shell: bash
+      - name: Check for examples
+        id: check_examples
+        run: test -d examples && echo "has_examples=1" || echo "has_examples=" >> $GITHUB_OUTPUT
+        shell: bash
       
   test:
     name: Test
