@@ -39,6 +39,20 @@ jobs:
     - name: Check publish
       run: cargo publish --dry-run --all-features
 
+      
+  check_tests:
+    name: Check for test types
+    runs-on: ubuntu-latest
+    steps:
+      - name Check for benchmarks
+      - run: test -d benchmarks && echo "has_benchmarks=1" || echo "has_benchmarks=" >> $GITHUB_OUTPUT
+      - shell: bash
+        
+    steps:
+      - name Check for examples
+      - run: test -d examples && echo "has_examples=1" || echo "has_examples=" >> $GITHUB_OUTPUT
+      - shell: bash
+      
   test:
     name: Test
     needs: [rustfmt, clippy]
@@ -72,14 +86,34 @@ jobs:
       
     - name: Test with no default features
       run: cargo test --workspace --no-default-features
-
-    - name: Run benchmarks with all features
-      if: hashFiles('benches/**')
-      run: cargo test --workspace --benches --all-features
-     
+   
     - name: Run examples with all features
       if: hashFiles('examples/**')
       run: cargo test --workspace --examples --all-features
+
+      
+  benchmarks:
+    name: Benchmark
+    needs: [rustfmt, clippy, check_tests]
+    if: needs.check_tests.outputs.has_benchmarks
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+      
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        profile: minimal
+        override: true
+        
+    - uses: Swatinem/rust-cache@v1
+      
+    - name: Run benchmarks with all features
+      env:
+        RUSTDOCFLAGS: -D warnings
+      run: cargo test --workspace --benches --all-features
 
       
   docs:
