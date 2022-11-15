@@ -21,7 +21,7 @@ on:
 jobs:
   publish:
     name: Publish (dry-run)
-    needs: [test, docs]
+    needs: [test, examples, benchmarks, docs]
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
@@ -115,9 +115,29 @@ jobs:
     - uses: Swatinem/rust-cache@v1
       
     - name: Run benchmarks with all features
-      env:
-        RUSTDOCFLAGS: -D warnings
       run: cargo test --workspace --benches --all-features
+
+      
+  examples:
+    name: Examples
+    needs: [rustfmt, clippy, check_tests]
+    if: needs.check_tests.outputs.has_examples
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+      
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        profile: minimal
+        override: true
+        
+    - uses: Swatinem/rust-cache@v1
+      
+    - name: Run examples with all features
+      run: cargo test --workspace --examples --all-features
 
       
   docs:
