@@ -21,7 +21,7 @@ on:
 jobs:
   publish:
     name: Publish (dry-run)
-    needs: [test, examples, benchmarks, docs]
+    needs: [test, docs]
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
